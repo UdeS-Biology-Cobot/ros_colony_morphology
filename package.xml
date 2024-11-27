@@ -1,0 +1,15 @@
+<package format="2">
+	<name>ros_colony_morphology</name>
+	<version>0.0.7</version>
+	<description>Service for caracterising bacterial colonies from an image</description>
+
+	<license>BSD</license>
+	<maintainer email="captain.yoshisaur@gmail.com">Captain Yoshi</maintainer>
+
+	<buildtool_depend>catkin</buildtool_depend>
+
+	<depend>message_generation</depend>
+	<depend>sensor_msgs</depend>
+
+	<exec_depend>message_runtime</exec_depend>
+</package>

@@ -1,0 +1,49 @@
+# Number of cell's to return morpholgy metrics
+uint32 number_of_cells
+
+# Picture
+sensor_msgs/Image image
+
+# Dish parameters
+bool mask_petri_dish    # True  = mask image to contain only the petri dish
+uint32 dish_radius      # For detecting circle-like object by canny method [pixel]
+uint32 dish_offset      # Reduce dish_radius by this offset when applying the mask [pixel]
+
+# Compute cell quality metric, set to zero to disable given metric
+#
+#   Cell Quality = (weight * area +
+#                   weight * compactness +
+#                   weight * eccentricity +
+#                   weight * min_distance_nn +
+#                   weight * solidity) / 5.0
+#
+#   1. Metrics are normalized
+#
+uint32 weight_area              # Area of the region i.e. number of pixels of the region scaled by pixel-area
+uint32 weight_compactness       # ratio of the area of an object to the area of a circle with the same perimeter
+uint32 weight_eccentricity      # Eccentricity of the ellipse that has the same second-moments as the region
+uint32 weight_min_distance_nn   # Nearest neighbor distance [pixel]
+uint32 weight_solidity          # Ratio of pixels in the region to pixels of the convex hull image
+
+# Filter out cells based on Threshold, set to 0 to disable
+uint32 cell_min_radius          # discard if < min_radius [pixel]
+uint32 cell_max_radius          # discard if > max_radius [pixel]
+float64 cell_min_compactness    # discard if < min_compactness [pixel]
+float64 cell_min_solidity       # discard if < min_solidity [pixel]
+float64 cell_max_eccentricity   # discard if > max_eccentricity [pixel]
+
+# Filter out cells based on Statistics, set to 0 to disable
+float64 std_weight_area     # 1 = Keep 68.27% of cell's between mu -1*sigma and mu + 1*sigma
+                            # 2 = Keep 95.45% of cell's between mu -2*sigma and mu + 2*sigma
+                            # 3 = Keep 99.73% of cell's between mu -3*sigma and mu + 3*sigma
+
+# Send back extra data
+bool send_masked_image
+bool send_annotated_image
+
+---
+
+sensor_msgs/Image masked_image      # populated only if requested
+sensor_msgs/Image annotated_image   # populated only if requested
+
+ColonyMetrics[] cell_metrics        # cell's metrics in order, highest cell quality to lowest
