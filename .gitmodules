@@ -1,0 +1,3 @@
+[submodule "ext/colony-morphology"]
+	path = ext/colony-morphology
+	url = https://github.com/captain-yoshi/colony-morphology
