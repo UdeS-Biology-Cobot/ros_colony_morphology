@@ -63,12 +63,14 @@ if __name__ == "__main__":
     ctr = 1
     for cell in response.cell_metrics:
         print(f'### Cell {ctr} ######################')
-        print(f'area         = {cell.area}')
-        print(f'cell_quality = {cell.cell_quality}')
-        print(f'centroid_x   = {cell.centroid_x}')
-        print(f'centroid_y   = {cell.centroid_y}')
-        print(f'compactness  = {cell.compactness}')
-        print(f'diameter     = {cell.diameter}')
+        print(f'area              = {cell.area}')
+        print(f'cell_quality      = {cell.cell_quality}')
+        print(f'compactness       = {cell.compactness}')
+        print(f'diameter          = {cell.diameter}')
+        print(f'centroid_local_x  = {cell.centroid_local[0]}')
+        print(f'centroid_local_y  = {cell.centroid_local[1]}')
+        print(f'centroid_global_x = {cell.centroid_global[0]}')
+        print(f'centroid_global_y = {cell.centroid_global[1]}')
         print('')
         ctr += 1
 

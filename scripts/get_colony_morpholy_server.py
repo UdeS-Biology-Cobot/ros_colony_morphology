@@ -264,8 +264,8 @@ def callback_compute_morphology(req):
         metric_msg.area = p["area"]
         metric_msg.cell_quality = p["cell_quality"]
         # centroid wrt. the input image
-        metric_msg.centroid_x = p.centroid[0] + x_min
-        metric_msg.centroid_y = p.centroid[1] + y_min
+        metric_msg.centroid_local = [p.centroid[0], p.centroid[1]]
+        metric_msg.centroid_global = [p.centroid[0] + x_min, p.centroid[1] + y_min]
         metric_msg.compactness = p["compactness"]
         metric_msg.diameter = p["equivalent_diameter_area"]
 
