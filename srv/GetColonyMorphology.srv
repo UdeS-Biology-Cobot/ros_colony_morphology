@@ -1,5 +1,5 @@
-# Number of cell's to return morpholgy metrics
-uint32 number_of_cells
+# Number of cell's to return morpholgy metrics, set to 0 to retrieve all cell's
+uint32 max_cells
 
 # Picture
 sensor_msgs/Image image
