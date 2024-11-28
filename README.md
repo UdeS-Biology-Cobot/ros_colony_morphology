@@ -12,27 +12,14 @@ Add colony_morphology into a virtual python environment instead of installing gl
 # clone this package + submodule
 $ git clone --recurse-submodules https://github.com/captain-yoshi/ros_colony_morphology
 
+# install dependencies
+$ rosdep install --from-path src/ros_colony_morphology
 
-# create python dependencies in a virtual environment
-$ cd ros_colony_morphology/ext/colony-morphology
 
-# use version used by ROS
-$ python3 -m venv venv
-
-$ source venv/bin/activate
-
-(venv)$ pip install -r requirements.txt
-
-(venv)$ deactivate
-
-$ cd ../../scripts
-
-# add softlink of required python modules to work with the script
-$ ln -s ../ext/colony-morphology/venv/lib/python3.8/site-packages/* ./
+$ catkin build
 ```
 
 ## Run
-
 ``` sh
 $ rosrun ros_colony_morphology get_colony_morpholy_server.py
 ```
