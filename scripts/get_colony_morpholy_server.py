@@ -6,8 +6,11 @@ import rospy
 from colony_morphology.geometry import *
 from colony_morphology.image_transform import *
 # from colony_morphology.plotting import plot_bboxes, plot_region_roperties
-from colony_morphology.skimage_util import compactness, min_distance_nn, cell_quality, axes_closness, regionprops_to_dict
 from colony_morphology.metric import compactness as compute_compactness
+from colony_morphology.skimage_util import compactness as compactness_property
+from colony_morphology.skimage_util import min_distance_nn as min_distance_nn_property
+from colony_morphology.skimage_util import cell_quality as cell_quality_property
+from colony_morphology.skimage_util import axes_closness as axes_closness_property
 from colony_morphology.metric import axes_closness as compute_axes_closness
 
 from scipy import ndimage as ndi
@@ -125,7 +128,7 @@ def callback_compute_morphology(req):
     print('Computing region properties...')
 
     # add extra properties, some function must be populated afterwards
-    extra_callbacks = (compactness, min_distance_nn, cell_quality, axes_closness)
+    extra_callbacks = (compactness_property, min_distance_nn_property, cell_quality_property, axes_closness_property)
 
     properties = regionprops(img_labels, intensity_image=img_gray, extra_properties=extra_callbacks)
 
@@ -171,16 +174,16 @@ def callback_compute_morphology(req):
         p = properties[i]
 
         # normalize
-        area = p.area / max_area
-        min_distance_nn = p.min_distance_nn / max_min_distance_nn
+        n_area = p.area / max_area
+        n_min_distance_nn = p.min_distance_nn / max_min_distance_nn
 
         # clamp compactness to 1
-        compactness = p.compactness
-        if(compactness > 1.0):
-           compactness =1.0
+        n_compactness = p.compactness
+        if(n_compactness > 1.0):
+           n_compactness =1.0
 
         # invert eccentricity ratio
-        eccentricity = 1.0 - p.eccentricity
+        n_eccentricity = 1.0 - p.eccentricity
 
         metrics_used = 0
         if(req.weight_area):
@@ -199,10 +202,10 @@ def callback_compute_morphology(req):
             return
 
         # compute quality metric
-        cell_quality = (req.weight_area  * area +
-                        req.weight_compactness  * compactness +
-                        req.weight_eccentricity * eccentricity +
-                        req.weight_min_distance_nn  * min_distance_nn +
+        cell_quality = (req.weight_area  * n_area +
+                        req.weight_compactness  * n_compactness +
+                        req.weight_eccentricity * n_eccentricity +
+                        req.weight_min_distance_nn  * n_min_distance_nn +
                         req.weight_solidity  * p.solidity) / metrics_used
 
         # discard cells
