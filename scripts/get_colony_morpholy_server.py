@@ -38,7 +38,7 @@ def callback_compute_morphology(req):
     scale, img_resize = resize_image(img_gray, pixel_threshold=1280*1280)
 
     # 2- detect circle radius + centroid
-    dish_regions = detect_area_by_canny(img_resize, radius=scale*req.dish_diameter)
+    dish_regions = detect_area_by_canny(img_resize, radius=scale*req.dish_diameter/2.0)
 
     region_prop = dish_regions[0]
     centroid = region_prop["centroid"]
