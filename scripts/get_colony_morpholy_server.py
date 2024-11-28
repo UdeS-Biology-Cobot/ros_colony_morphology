@@ -272,12 +272,6 @@ def callback_compute_morphology(req):
         response.cell_metrics.append(metric_msg)
 
 
-
-
-
-
-
-    print(f'response =\n {response}')
     return response
 
 def get_colony_morphology_server():
