@@ -250,7 +250,7 @@ def callback_compute_morphology(req):
     # Fill Response
     response = GetColonyMorphologyResponse()
 
-
+    # reduce list to requested number of cells
     reverse_metrics_slice = reverse_metrics
     if(req.max_cells and len(reverse_metrics) > req.max_cells):
         reverse_metrics_slice = reverse_metrics[0:req.max_cells]
@@ -270,6 +270,9 @@ def callback_compute_morphology(req):
         metric_msg.diameter = p["equivalent_diameter_area"]
 
         response.cell_metrics.append(metric_msg)
+
+    if req.send_image_result:
+        response.image_result = bridge.cv2_to_imgmsg(img_original_cropped, encoding="passthrough")
 
 
     return response

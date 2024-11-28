@@ -38,12 +38,10 @@ float64 std_weight_area     # 1 = Keep 68.27% of cell's between mu -1*sigma and 
                             # 3 = Keep 99.73% of cell's between mu -3*sigma and mu + 3*sigma
 
 # Send back extra data
-bool send_masked_image
-bool send_annotated_image
+bool send_image_result
 
 ---
 
-sensor_msgs/Image masked_image      # populated only if requested
-sensor_msgs/Image annotated_image   # populated only if requested
+sensor_msgs/Image image_result      # populated only if requested
 
 ColonyMetrics[] cell_metrics        # cell's metrics in order, highest cell quality to lowest

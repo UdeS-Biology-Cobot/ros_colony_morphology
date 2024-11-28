@@ -7,6 +7,7 @@ from ros_colony_morphology.msg import ColonyMetrics
 from ros_colony_morphology.srv import GetColonyMorphology, GetColonyMorphologyRequest
 from cv_bridge import CvBridge
 from pathlib import Path
+from matplotlib import pyplot as plt
 
 def get_colony_morphology_client(request):
     rospy.wait_for_service('get_colony_morphology')
@@ -55,8 +56,7 @@ if __name__ == "__main__":
 
     request.std_weight_area = 1.5
 
-    request.send_masked_image = False
-    request.send_annotated_image = False
+    request.send_image_result = True
 
     response = get_colony_morphology_client(request)
 
@@ -75,7 +75,32 @@ if __name__ == "__main__":
         ctr += 1
 
 
-    print(f'number of cells metrics =  {len(response.cell_metrics)}')
+    if len(response.cell_metrics) != 0:
+        fig, ax = plt.subplots()
 
+        if(len(response.image_result.data) == 0):
+            ax.imshow(cv_img)
+        else:
+            result_img = bridge.imgmsg_to_cv2(response.image_result, desired_encoding='passthrough')
+            ax.imshow(result_img)
 
+        ax.set_title(f'Best colonies to pick')
 
+        # circle up best matches
+        index  = 1
+        for metric in response.cell_metrics:
+
+            point = (0,0)
+            if(len(response.image_result.data) == 0):
+                point = (metric.centroid_global[1], metric.centroid_global[0])
+            else:
+                point = (metric.centroid_local[1], metric.centroid_local[0])
+
+            radius = metric.diameter/2.0 + 5
+            circle = plt.Circle(point, radius=radius, fc='none', color='red')
+            ax.add_patch(circle)
+            ax.annotate(index, xy=(point[0]+radius, point[1]-radius), color='red')
+            index += 1
+
+        plt.tight_layout()
+        plt.show()
