@@ -6,8 +6,8 @@ sensor_msgs/Image image
 
 # Dish parameters
 bool mask_petri_dish    # True  = mask image to contain only the petri dish
-uint32 dish_radius      # For detecting circle-like object by canny method [pixel]
-uint32 dish_offset      # Reduce dish_radius by this offset when applying the mask [pixel]
+uint32 dish_diameter    # For detecting circle-like object by canny method [pixel]
+uint32 dish_offset      # Reduce dish_diameter by this offset when applying the mask [pixel]
 
 # Compute cell quality metric, set to zero to disable given metric
 #
@@ -26,8 +26,8 @@ uint32 weight_min_distance_nn   # Nearest neighbor distance [pixel]
 uint32 weight_solidity          # Ratio of pixels in the region to pixels of the convex hull image
 
 # Filter out cells based on Threshold, set to 0 to disable
-uint32 cell_min_radius          # discard if < min_radius [pixel]
-uint32 cell_max_radius          # discard if > max_radius [pixel]
+uint32 cell_min_diameter        # discard if < min_diameter [pixel]
+uint32 cell_max_diameter        # discard if > max_diameter [pixel]
 float64 cell_min_compactness    # discard if < min_compactness [pixel]
 float64 cell_min_solidity       # discard if < min_solidity [pixel]
 float64 cell_max_eccentricity   # discard if > max_eccentricity [pixel]
