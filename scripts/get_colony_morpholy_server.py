@@ -250,7 +250,13 @@ def callback_compute_morphology(req):
     # Fill Response
     response = GetColonyMorphologyResponse()
 
-    for metric in reverse_metrics:
+
+    reverse_metrics_slice = reverse_metrics
+    if(req.max_cells and len(reverse_metrics) > req.max_cells):
+        reverse_metrics_slice = reverse_metrics[0:req.max_cells]
+
+
+    for metric in reverse_metrics_slice:
         p = properties[metric[1]]
 
         metric_msg = ColonyMetrics()
