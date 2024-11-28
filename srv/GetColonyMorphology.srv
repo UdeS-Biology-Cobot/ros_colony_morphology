@@ -19,11 +19,11 @@ uint32 dish_offset      # Reduce dish_diameter by this offset when applying the 
 #
 #   1. Metrics are normalized
 #
-uint32 weight_area              # Area of the region i.e. number of pixels of the region scaled by pixel-area
-uint32 weight_compactness       # ratio of the area of an object to the area of a circle with the same perimeter
-uint32 weight_eccentricity      # Eccentricity of the ellipse that has the same second-moments as the region
-uint32 weight_min_distance_nn   # Nearest neighbor distance [pixel]
-uint32 weight_solidity          # Ratio of pixels in the region to pixels of the convex hull image
+float64 weight_area              # Area of the region i.e. number of pixels of the region scaled by pixel-area
+float64 weight_compactness       # Ratio of the area of an object to the area of a circle with the same perimeter
+float64 weight_eccentricity      # Eccentricity of the ellipse that has the same second-moments as the region
+float64 weight_min_distance_nn   # Nearest neighbor distance [pixel]
+float64 weight_solidity          # Ratio of pixels in the region to pixels of the convex hull image
 
 # Filter out cells based on Threshold, set to 0 to disable
 uint32 cell_min_diameter        # discard if < min_diameter [pixel]
