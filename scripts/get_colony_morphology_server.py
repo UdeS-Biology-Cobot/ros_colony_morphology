@@ -48,13 +48,14 @@ def callback_compute_morphology(req):
     diameter/=scale
     diameter -= req.dish_offset
 
-    # 3- create circular mask
+    # 3- create circular masks
     circular_mask = create_circlular_mask(img_gray.shape[::-1], centroid[::-1], diameter/2.0)
+    circular_mask_artifacts = create_circlular_mask(img_gray.shape[::-1], centroid[::-1], diameter/2.0 -8)
 
     # 4- mask orighinal image
     idx = (circular_mask== False)
     img_masked = np.copy(img)
-    img_masked[idx] = 255; # make mask white to lower the size of fake region properties found
+    img_masked[idx] = 0; # black
 
     x_min = int(centroid[0]-diameter/2)
     x_max = int(centroid[0]+diameter/2)
@@ -74,6 +75,7 @@ def callback_compute_morphology(req):
     # 5- crop image
     img_cropped = img_masked[x_min:x_max, y_min:y_max]
     img_original_cropped = img[x_min:x_max, y_min:y_max]
+    circular_mask_artifacts = circular_mask_artifacts[x_min:x_max, y_min:y_max]
 
     # Convert to grayscale
     img_gray = cv.cvtColor(img_cropped, cv.COLOR_BGR2GRAY)
@@ -96,6 +98,12 @@ def callback_compute_morphology(req):
     kernel = np.ones((3,3),np.uint8)
     opening = cv.morphologyEx(img_fill,cv.MORPH_OPEN,kernel, iterations = 2)
     img_bw = opening
+
+
+    # remove contour artifacts from mask + post processing
+    idx = (circular_mask_artifacts== False)
+    img_bw[idx] = 0; # make mask white to lower the size of fake region properties found
+
 
     # Noise removal
     kernel = np.ones((3,3),np.uint8)
