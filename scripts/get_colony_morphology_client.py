@@ -41,11 +41,12 @@ if __name__ == "__main__":
     request.mask_petri_dish = True
     request.dish_diameter = 882
     request.dish_offset = 134
+    request.nn_query_size = 10
 
     request.weight_area = 2.0
     request.weight_compactness = 1.0
     request.weight_eccentricity = 0.25
-    request.weight_min_distance_nn = 2.0
+    request.weight_nn_collision_distance = 2.0
     request.weight_solidity = 1.0
 
     request.cell_min_diameter = 0

@@ -7,10 +7,11 @@ from colony_morphology.geometry import *
 from colony_morphology.image_transform import *
 # from colony_morphology.plotting import plot_bboxes, plot_region_roperties
 from colony_morphology.metric import compactness as compute_compactness
-from colony_morphology.skimage_util import compactness as compactness_property
-from colony_morphology.skimage_util import min_distance_nn as min_distance_nn_property
-from colony_morphology.skimage_util import cell_quality as cell_quality_property
-from colony_morphology.skimage_util import axes_closness as axes_closness_property
+from colony_morphology.skimage_util import compactness_cb
+from colony_morphology.skimage_util import nn_centroid_distance_cb
+from colony_morphology.skimage_util import nn_collision_distance_cb
+from colony_morphology.skimage_util import cell_quality_cb
+from colony_morphology.skimage_util import axes_closness_cb
 from colony_morphology.metric import axes_closness as compute_axes_closness
 
 from scipy import ndimage as ndi
@@ -136,7 +137,7 @@ def callback_compute_morphology(req):
     print('Computing region properties...')
 
     # add extra properties, some function must be populated afterwards
-    extra_callbacks = (compactness_property, min_distance_nn_property, cell_quality_property, axes_closness_property)
+    extra_callbacks = (compactness_cb, nn_centroid_distance_cb, nn_centroid_distance_cb, cell_quality_cb, axes_closness_cb)
 
     properties = regionprops(img_labels, intensity_image=img_gray, extra_properties=extra_callbacks)
 
@@ -164,17 +165,49 @@ def callback_compute_morphology(req):
 
     centroids = [p["centroid"] for p in properties]
     tree = cKDTree(centroids)
+    k = req.nn_query_size
+    if(k > len(centroids)):
+        k = len(centroids)
 
     for i in range(0, len(centroids)):
         centroid = centroids[i]
-        dd, ii = tree.query(centroid, 2)
+        dd, ii = tree.query(centroid, k)
 
         p = properties[i]
-        p.min_distance_nn = dd[1]
+        p.nn_centroid_distance = dd[1]
+        radius = p.equivalent_diameter_area/2.0
+
+        # compute collision distance
+        prev_nn_diameter = float('-inf')
+        prev_collision_distance = float('+inf')
+
+        for index in range(1, len(ii)):
+            pnn = properties[ii[index]]
+            nn_diameter = pnn.equivalent_diameter_area
+
+            # only compute if the radius of the cell is greater then the previous
+            # cell, because the centroid distance will be greater, so a greater
+            # radius must be achieved so that the collision distance may shrink
+            if  nn_diameter > prev_nn_diameter:
+                prev_nn_diameter = nn_diameter
+                nn_radius = nn_diameter / 2.0
+
+                collision_distance = dd[index] - (radius + nn_radius)
+
+                if(collision_distance < prev_collision_distance):
+                    prev_collision_distance = collision_distance
+                    p.nn_collision_distance = collision_distance
+
+                    # print(f"centroid = {dd[index]}")
+                    # print(f"radius = {radius}")
+                    # print(f"nnradius = {nn_radius}")
+                    # print(f"collision_distance = {collision_distance}")
+
+
 
 
     # Compute metric for best colonies
-    max_min_distance_nn = max(p["min_distance_nn"] for p in properties if p["compactness"] >= 0.2)
+    max_nn_collision_distance = max(p["nn_collision_distance"] for p in properties if p["compactness"] >= 0.2 and p["nn_collision_distance"] >= 0)
     max_area = max(p["area"] for p in properties if p["compactness"] >= 0.2)
 
     quality_metrics = np.empty(len(properties), dtype=object)
@@ -183,7 +216,7 @@ def callback_compute_morphology(req):
 
         # normalize
         n_area = p.area / max_area
-        n_min_distance_nn = p.min_distance_nn / max_min_distance_nn
+        n_nn_collision_distance = p.nn_collision_distance / max_nn_collision_distance
 
         # clamp compactness to 1
         n_compactness = p.compactness
@@ -200,7 +233,7 @@ def callback_compute_morphology(req):
             metrics_used += 1
         if(req.weight_eccentricity):
             metrics_used += 1
-        if(req.weight_min_distance_nn):
+        if(req.weight_nn_collision_distance):
             metrics_used += 1
         if(req.weight_solidity):
             metrics_used += 1
@@ -213,7 +246,7 @@ def callback_compute_morphology(req):
         cell_quality = (req.weight_area  * n_area +
                         req.weight_compactness  * n_compactness +
                         req.weight_eccentricity * n_eccentricity +
-                        req.weight_min_distance_nn  * n_min_distance_nn +
+                        req.weight_nn_collision_distance  * n_nn_collision_distance +
                         req.weight_solidity  * p.solidity) / metrics_used
 
         # discard cells
@@ -227,6 +260,9 @@ def callback_compute_morphology(req):
             cell_quality = 0.0
         if(req.cell_max_eccentricity and p.eccentricity > req.cell_max_eccentricity):
             cell_quality = 0.0
+        if(p.nn_collision_distance < 0): # in collision
+            cell_quality = 0.0
+
 
         quality_metrics[i] = (cell_quality, i)
         p.cell_quality = cell_quality
@@ -276,6 +312,8 @@ def callback_compute_morphology(req):
         metric_msg.centroid_global = [p.centroid[0] + x_min, p.centroid[1] + y_min]
         metric_msg.compactness = p["compactness"]
         metric_msg.diameter = p["equivalent_diameter_area"]
+        metric_msg.nn_centroid_distance = p["nn_centroid_distance"]
+        metric_msg.nn_collision_distance = p["nn_collision_distance"]
 
         response.cell_metrics.append(metric_msg)
 

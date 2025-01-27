@@ -2,6 +2,11 @@ float64 area
 float64 cell_quality
 float64 compactness
 float64 diameter
+float64 nn_centroid_distance   # nearest neighbor distance of centroids
+float64 nn_collision_distance  # nearest neighbor collision distance wrt. the equivalent radius area
+                               # > 0, not in collision
+                               # = 0, no nearest neighbor or in collision
+                               # < 0, in collision
 
 # Coordinates of the colony
 #     +x points to the right of the image
