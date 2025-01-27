@@ -36,32 +36,34 @@ def callback_compute_morphology(req):
 
     # Mask image to contain only the petri dish
     # 1- resize image to speedup detection
-    scale, img_resize = resize_image(img_gray, pixel_threshold=1280*1280)
+    # scale, img_resize = resize_image(img_gray, pixel_threshold=1280*1280)
 
     # 2- detect circle radius + centroid
-    dish_regions = detect_area_by_canny(img_resize, radius=scale*req.dish_diameter/2.0)
+    dish_regions = detect_area_by_canny(img_gray, radius=(req.dish_diameter/2.0))
+    if(len(dish_regions) == 0):
+        print('No circle detected, check the requested dish diameter');
+        return response
 
     region_prop = dish_regions[0]
     centroid = region_prop["centroid"]
-    diameter = region_prop["equivalent_diameter_area"]
+    radius = region_prop["equivalent_diameter_area"]/2.0
 
-    centroid = tuple(c/scale for c in centroid)
-    diameter/=scale
-    diameter -= req.dish_offset
+    centroid = tuple(c for c in centroid)
+    radius -= req.dish_offset
 
     # 3- create circular masks
-    circular_mask = create_circlular_mask(img_gray.shape[::-1], centroid[::-1], diameter/2.0)
-    circular_mask_artifacts = create_circlular_mask(img_gray.shape[::-1], centroid[::-1], diameter/2.0 -8)
+    circular_mask = create_circlular_mask(img_gray.shape[::-1], centroid[::-1], radius)
+    circular_mask_artifacts = create_circlular_mask(img_gray.shape[::-1], centroid[::-1], radius -8)
 
     # 4- mask orighinal image
     idx = (circular_mask== False)
     img_masked = np.copy(img)
     img_masked[idx] = 0; # black
 
-    x_min = int(centroid[0]-diameter/2)
-    x_max = int(centroid[0]+diameter/2)
-    y_min = int(centroid[1]-diameter/2)
-    y_max = int(centroid[1]+diameter/2)
+    x_min = int(centroid[0]-radius)
+    x_max = int(centroid[0]+radius)
+    y_min = int(centroid[1]-radius)
+    y_max = int(centroid[1]+radius)
 
     if(x_min < 0):
         x_min = 0
