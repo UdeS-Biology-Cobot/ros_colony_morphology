@@ -97,7 +97,7 @@ if __name__ == "__main__":
             else:
                 point = (metric.centroid_local[1], metric.centroid_local[0])
 
-            radius = metric.diameter/2.0 + 5
+            radius = metric.diameter/2.0
             circle = plt.Circle(point, radius=radius, fc='none', color='red')
             ax.add_patch(circle)
             ax.annotate(index, xy=(point[0]+radius, point[1]-radius), color='red')
