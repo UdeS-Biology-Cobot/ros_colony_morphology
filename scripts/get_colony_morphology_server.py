@@ -49,10 +49,9 @@ def callback_compute_morphology(req):
     # Convert to grayscale
     img_gray = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
 
-
     # Mask image to contain only the petri dish
     # 1a- Resize image to speedup circle detection
-    scale, img_resize = resize_image(img_gray, pixel_threshold=1280*1280)
+    scale, img_resize = resize_image(img_gray, pixel_threshold=480*480)
 
     # 1b- Canny edge detector
     edges = canny(img_resize, sigma=3, low_threshold=10, high_threshold=50)
