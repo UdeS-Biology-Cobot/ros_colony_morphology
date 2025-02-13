@@ -261,9 +261,9 @@ def callback_compute_morphology(req):
                         req.weight_solidity  * p.solidity) / metrics_used
 
         # discard cells
-        if(req.cell_min_diameter and p.equivalent_diameter_area < req.cell_min_diameter):
+        if(req.cell_min_diameter and p.equivalent_diameter < req.cell_min_diameter):
             cell_quality = 0.0
-        if(req.cell_max_diameter and p.equivalent_diameter_area > req.cell_max_diameter):
+        if(req.cell_max_diameter and p.equivalent_diameter > req.cell_max_diameter):
             cell_quality = 0.0
         if(req.cell_min_compactness and p.compactness < req.cell_min_compactness):
             cell_quality = 0.0
