@@ -89,61 +89,53 @@ def callback_compute_morphology(req):
     img_original_cropped = img[x_min:x_max, y_min:y_max]
     circular_mask_threshold = circular_mask_threshold[x_min:x_max, y_min:y_max]
 
-    # Convert to grayscale
+    # 2- Convert to grayscale
     img_gray = cv.cvtColor(img_cropped, cv.COLOR_RGB2GRAY)
 
-    # Blur image
+    # 3- Blur image
     img_blur = cv.GaussianBlur(img_gray, (7, 7), 0)
 
 
-    # Apply threshold
+
+    # 4- Adaptive threshold
     img_bw = cv.adaptiveThreshold(img_blur, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 9, 2)
 
-
-    # fill smal holes
-    # https://stackoverflow.com/a/10317883
-    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(9,9))
-    img_fill = cv.morphologyEx(img_bw,cv.MORPH_CLOSE,kernel)
+    # 5- Remove contour artifacts generated from adaptive threshold
+    idx = (circular_mask_threshold== False)
+    img_bw[idx] = 0; # black
 
 
-    # Noise removal
-    kernel = np.ones((3,3),np.uint8)
-    opening = cv.morphologyEx(img_fill,cv.MORPH_OPEN,kernel, iterations = 2)
-    img_bw = opening
+
+    # 6- Closing - dilation followed by erosion
+    # https://docs.opencv.org/4.x/d9/d61/tutorial_py_morphological_ops.html
+    kernel = np.ones((2,2),np.uint8)
+    closing = cv.morphologyEx(img_bw, cv.MORPH_CLOSE,kernel, iterations = 1)
 
 
-    # remove contour artifacts from mask + post processing
-    idx = (circular_mask_artifacts== False)
-    img_bw[idx] = 0; # make mask white to lower the size of fake region properties found
+    # 7- Opening - erosion followed by dilation
+    # https://docs.opencv.org/4.x/d9/d61/tutorial_py_morphological_ops.html
+    kernel = np.ones((2,2),np.uint8)
+    opening = cv.morphologyEx(closing, cv.MORPH_OPEN,kernel, iterations = 1)
 
 
-    # Noise removal
-    kernel = np.ones((3,3),np.uint8)
-    opening = cv.morphologyEx(img_bw,cv.MORPH_OPEN,kernel, iterations = 2)
+    # Segmentation for separating different objects in an image
+    # 8a- Generate the markers as local maxima of the distance to the background
+    img_distance = np.empty(opening.shape)
+    ndi.distance_transform_edt(opening, distances=img_distance)
 
-    # Sure background area
-    sure_bg = cv.dilate(opening,kernel,iterations=3)
 
-    # Finding sure foreground area
-    distance = cv.distanceTransform(opening,cv.DIST_L2,5)
-    ret, sure_fg = cv.threshold(distance,0.1*distance.max(),255,0)
-    sure_fg = np.uint8(sure_fg)     # Convert to int
-
-    # Now we want to separate the two objects in image
-    # Generate the markers as local maxima of the distance to the background
-    img_distance = np.empty(sure_fg.shape)
-    ndi.distance_transform_edt(sure_fg, distances=img_distance)
 
     # Segment image using watershed technique
     print('Computing watershed...')
 
-    coords = peak_local_max(img_distance, footprint=np.ones((3, 3)), labels=sure_fg)
+    coords = peak_local_max(img_distance, footprint=np.ones((3, 3)), labels=opening)
     img_peak_mask = np.zeros(img_distance.shape, dtype=bool)
     img_peak_mask[tuple(coords.T)] = True
 
     markers = ndi.label(img_peak_mask)[0]
-    img_labels = watershed(img_distance, markers, mask=sure_fg, connectivity=1, compactness=0)
 
+    # 8b- Watershed
+    img_labels = watershed(img_distance, markers, mask=opening, connectivity=1, compactness=0)
     # Retrieve metric from labels
     print('Computing region properties...')
 
