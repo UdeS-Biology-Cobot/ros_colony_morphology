@@ -266,16 +266,28 @@ def callback_compute_morphology(req):
 
         # discard cells
         if(req.cell_min_diameter and p.equivalent_diameter < req.cell_min_diameter):
+            p.discarded = True
+            p.discarded_description += f'Cell #{p.label} equivalent diameter is lower then the requested threshold: {p.equivalent_diameter} < {req.cell_min_diameter}\n'
             cell_quality = 0.0
         if(req.cell_max_diameter and p.equivalent_diameter > req.cell_max_diameter):
+            p.discarded = True
+            p.discarded_description += f'Cell #{p.label} equivalent diameter is higher then the requested threshold: {p.equivalent_diameter} < {req.cell_max_diameter}\n'
             cell_quality = 0.0
         if(req.cell_min_compactness and p.compactness < req.cell_min_compactness):
+            p.discarded = True
+            p.discarded_description += f'Cell #{p.label} compactness is lower then the requested threshold: {p.compactness} < {req.cell_min_compactness}\n'
             cell_quality = 0.0
         if(req.cell_min_solidity and p.solidity < req.cell_min_solidity):
+            p.discarded = True
+            p.discarded_description += f'Cell #{p.label} solidity is lower then the requested threshold: {p.solidity} < {req.cell_min_solidity}\n'
             cell_quality = 0.0
         if(req.cell_max_eccentricity and p.eccentricity > req.cell_max_eccentricity):
+            p.discarded = True
+            p.discarded_description += f'Cell #{p.label} eccentricity is higher then the requested threshold: {p.eccentricity} < {req.cell_max_eccentricity}\n'
             cell_quality = 0.0
         if(p.nn_collision_distance < 0): # in collision
+            p.discarded = True
+            p.discarded_description += f'Cell #{p.label} is in collision. Distance: {p.nn_collision_distance}\n'
             cell_quality = 0.0
 
 
@@ -294,9 +306,15 @@ def callback_compute_morphology(req):
         # print(area_mean + 1.5* area_std)
         for i in range(0, len(properties)):
             p = properties[i]
-            if (p.area < area_mean - req.std_weight_area* area_std or
-                p.area > area_mean + req.std_weight_area* area_std):
-                # print(f'label {p.label} discarded due to being below std')
+            if (p.area < area_mean - req.std_weight_area* area_std):
+                p.discarded = True
+                p.discarded_description += f'Cell #{p.label} area is outside the requested std distribution: {p.area} < {area_mean - req.std_weight_area* area_std},\nwhere area = {p.area}, mean = {area_mean}, sigma = {req.std_weight_area}, std = {area_std}\n'
+                print(f'label {p.label} discarded due to being below std')
+                p.cell_quality = 0.0
+                quality_metrics[i] = (p.cell_quality, i)
+            elif(p.area > area_mean + req.std_weight_area* area_std):
+                p.discarded = True
+                p.discarded_description += f'Cell #{p.label} area is outside the requested std distribution: {p.area} > {area_mean + req.std_weight_area* area_std},\nwhere area = {p.area}, mean = {area_mean}, sigma = {req.std_weight_area}, std = {area_std}\n'
                 p.cell_quality = 0.0
                 quality_metrics[i] = (p.cell_quality, i)
 
