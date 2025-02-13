@@ -163,9 +163,9 @@ def callback_compute_morphology(req):
         else:
             p.compactness = compute_compactness(p.area, p.perimeter)
 
-    # 9d- Remove every properties that have a perimeter of zero
-    properties[:] = [p for p in properties if p["compactness"] > 0.0]
-    print(f'Region properties, after removing small objects = {len(properties)}')
+    # 9d- Remove every properties that have a compactness of zero
+    # properties[:] = [p for p in properties if p["compactness"] > 0.0]
+    # print(f'Region properties, after removing small objects = {len(properties)}')
 
     # 9e- Compute axes_closness
     for p in properties:
