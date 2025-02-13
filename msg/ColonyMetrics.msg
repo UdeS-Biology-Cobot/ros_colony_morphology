@@ -7,6 +7,8 @@ float64 nn_collision_distance  # nearest neighbor collision distance wrt. the eq
                                # > 0, not in collision
                                # = 0, no nearest neighbor or in collision
                                # < 0, in collision
+bool discarded
+string discarded_description
 
 # Coordinates of the colony
 #     +x points to the right of the image
