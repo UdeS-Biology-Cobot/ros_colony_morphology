@@ -2,7 +2,7 @@
 uint32 max_cells
 
 # Picture
-sensor_msgs/Image image
+sensor_msgs/Image image # Must be in RGB format
 
 # Dish parameters
 bool mask_petri_dish    # True  = mask image to contain only the petri dish
@@ -44,6 +44,15 @@ float64 std_weight_area     # 1 = Keep 68.27% of cell's between mu -1*sigma and 
 
 # Send back extra data
 bool send_image_result
+
+# Debugging
+string save_path                # absolute path to save files to, e.g. "/home/user/mydirectory"
+bool save_circle_detection      # subplot of circle detection algorithm [png]
+bool save_segmentation_process  # subplot of all the segmentation (after circle detection) [png]
+bool save_cell_annotation       # annotated cell wrt. the cell_quality metric [png]
+bool save_properties            # metrics of region properties [xlsx]
+
+bool plot_interactive_properties  # plot cell properties on a web client, web page will open automatically
 
 ---
 
