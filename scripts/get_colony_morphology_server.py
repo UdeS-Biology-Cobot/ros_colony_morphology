@@ -200,9 +200,9 @@ def callback_compute_morphology(req):
         else:
             p.compactness = compute_compactness(p.area, p.perimeter)
 
-    # 9d- Remove every properties that have a compactness of zero
-    # properties[:] = [p for p in properties if p["compactness"] > 0.0]
-    # print(f'Region properties, after removing small objects = {len(properties)}')
+    # 9d- Remove every properties that have a perimeter of 0
+    properties[:] = [p for p in properties if p["perimeter"] > 0.0]
+    print(f'Region properties, after removing small objects = {len(properties)}')
 
     # 9e- Compute axes_closness
     for p in properties:
@@ -521,9 +521,6 @@ def callback_compute_morphology(req):
                       'solidity',)
 
         props_dict = regionprops_to_dict(properties, prop_names)
-
-        print(props_dict)
-
 
         df = pd.DataFrame(props_dict)
         df.to_excel(f'{req.save_path}/region_properties.xlsx', index=False)
