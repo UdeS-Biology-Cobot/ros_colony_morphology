@@ -7,11 +7,13 @@ from colony_morphology.geometry import *
 from colony_morphology.image_transform import *
 # from colony_morphology.plotting import plot_bboxes, plot_region_roperties
 from colony_morphology.metric import compactness as compute_compactness
-from colony_morphology.skimage_util import compactness_cb
-from colony_morphology.skimage_util import nn_centroid_distance_cb
-from colony_morphology.skimage_util import nn_collision_distance_cb
-from colony_morphology.skimage_util import cell_quality_cb
-from colony_morphology.skimage_util import axes_closness_cb
+from colony_morphology.skimage_util import compactness as compactness_cb
+from colony_morphology.skimage_util import nn_centroid_distance as nn_centroid_distance_cb
+from colony_morphology.skimage_util import nn_collision_distance as nn_collision_distance_cb
+from colony_morphology.skimage_util import cell_quality as cell_quality_cb
+from colony_morphology.skimage_util import axes_closness as axes_closness_cb
+from colony_morphology.skimage_util import discarded as discarded_cb
+from colony_morphology.skimage_util import discarded_description as discarded_description_cb
 from colony_morphology.metric import axes_closness as compute_axes_closness
 
 from scipy import ndimage as ndi
@@ -136,15 +138,24 @@ def callback_compute_morphology(req):
 
     # 8b- Watershed
     img_labels = watershed(img_distance, markers, mask=opening, connectivity=1, compactness=0)
-    # Retrieve metric from labels
+
+
+    # Generate metrics from labels
+    # 9a- Add extra properties, some function must be populated afterwards
     print('Computing region properties...')
+    extra_callbacks = (compactness_cb,
+                       nn_collision_distance_cb,
+                       nn_centroid_distance_cb,
+                       cell_quality_cb,
+                       discarded_cb,
+                       discarded_description_cb,
+                       axes_closness_cb)
 
-    # add extra properties, some function must be populated afterwards
-    extra_callbacks = (compactness_cb, nn_centroid_distance_cb, nn_centroid_distance_cb, cell_quality_cb, axes_closness_cb)
-
+    # 9b- Measure properties of labelled image regions
     properties = regionprops(img_labels, intensity_image=img_gray, extra_properties=extra_callbacks)
+    print(f'Region properties = {len(properties)}')
 
-    # Compute compactness
+    # 9c- Compute compactness
     for p in properties:
         # avoid division by zero
         if(p.perimeter == 0.0):
@@ -152,18 +163,15 @@ def callback_compute_morphology(req):
         else:
             p.compactness = compute_compactness(p.area, p.perimeter)
 
-
-    # Remove every properties that have a perimeter of zero
+    # 9d- Remove every properties that have a perimeter of zero
     properties[:] = [p for p in properties if p["compactness"] > 0.0]
     print(f'Region properties, after removing small objects = {len(properties)}')
 
-
-    # Compute axes_closness
+    # 9e- Compute axes_closness
     for p in properties:
         p.axes_closness = compute_axes_closness(p.axis_major_length, p.axis_minor_length)
 
-
-    # Find the nearest neighbors with ckDTree
+    # 9f- Find the nearest neighbors with ckDTree
     print('Computing distance to nearest neighboring cells...')
 
     centroids = [p["centroid"] for p in properties]
@@ -209,7 +217,7 @@ def callback_compute_morphology(req):
 
 
 
-    # Compute metric for best colonies
+    # 9g- Compute cell_quality metric an discard cell's based on user threshold
     max_nn_collision_distance = max(p["nn_collision_distance"] for p in properties if p["compactness"] >= 0.2 and p["nn_collision_distance"] >= 0)
     max_area = max(p["area"] for p in properties if p["compactness"] >= 0.2)
 
@@ -289,18 +297,20 @@ def callback_compute_morphology(req):
                 quality_metrics[i] = (p.cell_quality, i)
 
 
+    # 10- sort by best cell_quality metrics (higher is better)
     # TODO itemgetter might be faster then a lambda
     # https://stackoverflow.com/a/10695158
     reverse_metrics = sorted(quality_metrics, key=lambda x: x[0], reverse=True)
 
 
 
-    # reduce list to requested number of cells
+    # 11- Reduce list to requested number of cells
     reverse_metrics_slice = reverse_metrics
     if(req.max_cells and len(reverse_metrics) > req.max_cells):
         reverse_metrics_slice = reverse_metrics[0:req.max_cells]
 
 
+    # 12- Fill Response
     for metric in reverse_metrics_slice:
         p = properties[metric[1]]
 
