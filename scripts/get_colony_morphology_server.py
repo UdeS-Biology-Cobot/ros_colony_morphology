@@ -520,8 +520,22 @@ def callback_compute_morphology(req):
                       'slice',
                       'solidity',)
 
+        # Generate dictionary of properties
         props_dict = regionprops_to_dict(properties, prop_names)
 
+        # Find the max length of string metrics, e.g. with 'discarded_description'
+        max_description_size = 0
+        for p in properties:
+            description_size = len(p.discarded_description)
+            if(description_size > max_description_size):
+                max_description_size = description_size
+
+        # Recreate string metrics with a fixed unicode string
+        props_dict["discarded_description"] = np.empty(len(properties), dtype=f'<U{max_description_size}')
+        for i in range(len(properties)):
+            props_dict["discarded_description"][i] = properties[i].discarded_description
+
+        # Convert to DataFrame
         df = pd.DataFrame(props_dict)
         df.to_excel(f'{req.save_path}/region_properties.xlsx', index=False)
 
