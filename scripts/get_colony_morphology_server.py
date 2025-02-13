@@ -324,26 +324,22 @@ def callback_compute_morphology(req):
         p.cell_quality = cell_quality
 
 
-    # remove outliers wrt. area of non discarded cell's
-    if(req.std_weight_area):
-        area_std = statistics.pstdev(p["area"] for p in properties if p.cell_quality > 0.0)
-        area_mean = statistics.mean(p["area"] for p in properties if p.cell_quality > 0.0)
+    # remove outliers wrt. diameter of non discarded cell's
+    if(req.std_weight_diameter):
+        diameter_std = statistics.pstdev(p["equivalent_diameter"] for p in properties if p.cell_quality > 0.0)
+        diameter_mean = statistics.mean(p["equivalent_diameter"] for p in properties if p.cell_quality > 0.0)
 
-        # print(area_std)
-        # print(area_mean)
-        # print(area_mean - 1.5* area_std)
-        # print(area_mean + 1.5* area_std)
         for i in range(0, len(properties)):
             p = properties[i]
-            if (p.area < area_mean - req.std_weight_area* area_std):
+            if (p.equivalent_diameter < diameter_mean - req.std_weight_diameter* diameter_std):
                 p.discarded = True
-                p.discarded_description += f'Cell #{p.label} area is outside the requested std distribution: {p.area} < {area_mean - req.std_weight_area* area_std},\nwhere area = {p.area}, mean = {area_mean}, sigma = {req.std_weight_area}, std = {area_std}\n'
+                p.discarded_description += f'Cell #{p.label} diameter is outside the requested std distribution: {p.equivalent_diameter} < {diameter_mean - req.std_weight_diameter* diameter_std},\nwhere mean = {diameter_mean}, sigma = {req.std_weight_diameter}, std = {diameter_std}\n'
                 # print(f'label {p.label} discarded due to being below std')
                 p.cell_quality = 0.0
                 quality_metrics[i] = (p.cell_quality, i)
-            elif(p.area > area_mean + req.std_weight_area* area_std):
+            elif(p.equivalent_diameter > diameter_mean + req.std_weight_diameter* diameter_std):
                 p.discarded = True
-                p.discarded_description += f'Cell #{p.label} area is outside the requested std distribution: {p.area} > {area_mean + req.std_weight_area* area_std},\nwhere area = {p.area}, mean = {area_mean}, sigma = {req.std_weight_area}, std = {area_std}\n'
+                p.discarded_description += f'Cell #{p.label} diameter is outside the requested std distribution: {p.equivalent_diameter} > {diameter_mean + req.std_weight_diameter* diameter_std},\nwhere mean = {diameter_mean}, sigma = {req.std_weight_diameter}, std = {diameter_std}\n'
                 # print(f'label {p.label} discarded due to being below std')
                 p.cell_quality = 0.0
                 quality_metrics[i] = (p.cell_quality, i)
@@ -541,6 +537,7 @@ def callback_compute_morphology(req):
                           'solidity',
                           'compactness',
                           'axes_closness',
+                          'equivalent_diameter',
                           'nn_collision_distance',
                           'cell_quality',
                           'discarded',

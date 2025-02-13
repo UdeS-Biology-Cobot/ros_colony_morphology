@@ -30,15 +30,16 @@ uint32 nn_query_size    # Return X nearest neighbor's from the centroid tree que
                         # A higher number will lead to a better aproximation of the collision distance
 
 
-# Filter out cells based on Threshold, set to 0 to disable
+# Discard cells based on Threshold, set to 0 to disable
 uint32 cell_min_diameter        # discard if < min_diameter [pixel]
 uint32 cell_max_diameter        # discard if > max_diameter [pixel]
 float64 cell_min_compactness    # discard if < min_compactness [pixel]
 float64 cell_min_solidity       # discard if < min_solidity [pixel]
 float64 cell_max_eccentricity   # discard if > max_eccentricity [pixel]
 
-# Filter out cells based on Statistics, set to 0 to disable
-float64 std_weight_area     # 1 = Keep 68.27% of cell's between mu -1*sigma and mu + 1*sigma
+# Discard cells based on Statistics, set to 0 to disable
+# The mean and std are computed on non discarded cell's (after passing through the Threshold filtering)
+float64 std_weight_diameter # 1 = Keep 68.27% of cell's between mu -1*sigma and mu + 1*sigma
                             # 2 = Keep 95.45% of cell's between mu -2*sigma and mu + 2*sigma
                             # 3 = Keep 99.73% of cell's between mu -3*sigma and mu + 3*sigma
 
