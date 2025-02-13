@@ -296,27 +296,27 @@ def callback_compute_morphology(req):
         # discard cells
         if(req.cell_min_diameter and p.equivalent_diameter < req.cell_min_diameter):
             p.discarded = True
-            p.discarded_description += f'Cell #{p.label} equivalent diameter is lower then the requested threshold: {p.equivalent_diameter} < {req.cell_min_diameter}\n'
+            p.discarded_description += f'Cell equivalent diameter is lower then the requested threshold: {p.equivalent_diameter:.2f} < {req.cell_min_diameter:.2f}\n'
             cell_quality = 0.0
         if(req.cell_max_diameter and p.equivalent_diameter > req.cell_max_diameter):
             p.discarded = True
-            p.discarded_description += f'Cell #{p.label} equivalent diameter is higher then the requested threshold: {p.equivalent_diameter} < {req.cell_max_diameter}\n'
+            p.discarded_description += f'Cell equivalent diameter is higher then the requested threshold: {p.equivalent_diameter:.2f} < {req.cell_max_diameter:.2f}\n'
             cell_quality = 0.0
         if(req.cell_min_compactness and p.compactness < req.cell_min_compactness):
             p.discarded = True
-            p.discarded_description += f'Cell #{p.label} compactness is lower then the requested threshold: {p.compactness} < {req.cell_min_compactness}\n'
+            p.discarded_description += f'Cell compactness is lower then the requested threshold: {p.compactness:.2f} < {req.cell_min_compactness:.2f}\n'
             cell_quality = 0.0
         if(req.cell_min_solidity and p.solidity < req.cell_min_solidity):
             p.discarded = True
-            p.discarded_description += f'Cell #{p.label} solidity is lower then the requested threshold: {p.solidity} < {req.cell_min_solidity}\n'
+            p.discarded_description += f'Cell solidity is lower then the requested threshold: {p.solidity:.2f} < {req.cell_min_solidity:.2f}\n'
             cell_quality = 0.0
         if(req.cell_max_eccentricity and p.eccentricity > req.cell_max_eccentricity):
             p.discarded = True
-            p.discarded_description += f'Cell #{p.label} eccentricity is higher then the requested threshold: {p.eccentricity} < {req.cell_max_eccentricity}\n'
+            p.discarded_description += f'Cell eccentricity is higher then the requested threshold: {p.eccentricity:.2f} < {req.cell_max_eccentricity:.2f}\n'
             cell_quality = 0.0
         if(p.nn_collision_distance < 0): # in collision
             p.discarded = True
-            p.discarded_description += f'Cell #{p.label} is in collision. Distance: {p.nn_collision_distance}\n'
+            p.discarded_description += f'Cell is in collision. Distance: {p.nn_collision_distance:.2f}\n'
             cell_quality = 0.0
 
 
@@ -333,13 +333,13 @@ def callback_compute_morphology(req):
             p = properties[i]
             if (p.equivalent_diameter < diameter_mean - req.std_weight_diameter* diameter_std):
                 p.discarded = True
-                p.discarded_description += f'Cell #{p.label} diameter is outside the requested std distribution: {p.equivalent_diameter} < {diameter_mean - req.std_weight_diameter* diameter_std},\nwhere mean = {diameter_mean}, sigma = {req.std_weight_diameter}, std = {diameter_std}\n'
+                p.discarded_description += f'Cell diameter is outside the requested std distribution: {p.equivalent_diameter:.2f} < {(diameter_mean - req.std_weight_diameter* diameter_std):.2f},\nwhere mean = {diameter_mean:.2f}, sigma = {req.std_weight_diameter:.2f}, std = {diameter_std:.2f}\n'
                 # print(f'label {p.label} discarded due to being below std')
                 p.cell_quality = 0.0
                 quality_metrics[i] = (p.cell_quality, i)
             elif(p.equivalent_diameter > diameter_mean + req.std_weight_diameter* diameter_std):
                 p.discarded = True
-                p.discarded_description += f'Cell #{p.label} diameter is outside the requested std distribution: {p.equivalent_diameter} > {diameter_mean + req.std_weight_diameter* diameter_std},\nwhere mean = {diameter_mean}, sigma = {req.std_weight_diameter}, std = {diameter_std}\n'
+                p.discarded_description += f'Cell diameter is outside the requested std distribution: {p.equivalent_diameter:.2f} > {(diameter_mean + req.std_weight_diameter* diameter_std):.2f},\nwhere mean = {diameter_mean:.2f}, sigma = {req.std_weight_diameter:.2f}, std = {diameter_std:.2f}\n'
                 # print(f'label {p.label} discarded due to being below std')
                 p.cell_quality = 0.0
                 quality_metrics[i] = (p.cell_quality, i)
