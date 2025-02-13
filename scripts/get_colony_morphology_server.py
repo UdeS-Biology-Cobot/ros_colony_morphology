@@ -33,7 +33,7 @@ def callback_compute_morphology(req):
     img = bridge.imgmsg_to_cv2(req.image, desired_encoding='passthrough')
 
     # Convert to grayscale
-    img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    img_gray = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
 
 
     # Mask image to contain only the petri dish
@@ -83,7 +83,7 @@ def callback_compute_morphology(req):
     circular_mask_artifacts = circular_mask_artifacts[x_min:x_max, y_min:y_max]
 
     # Convert to grayscale
-    img_gray = cv.cvtColor(img_cropped, cv.COLOR_BGR2GRAY)
+    img_gray = cv.cvtColor(img_cropped, cv.COLOR_RGB2GRAY)
 
     # Blur image
     img_blur = cv.GaussianBlur(img_gray, (7, 7), 0)
