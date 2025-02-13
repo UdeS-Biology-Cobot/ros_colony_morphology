@@ -37,31 +37,40 @@ def callback_compute_morphology(req):
 
 
     # Mask image to contain only the petri dish
-    # 1- resize image to speedup detection
-    # scale, img_resize = resize_image(img_gray, pixel_threshold=1280*1280)
+    # 1a- Resize image to speedup circle detection
+    scale, img_resize = resize_image(img_gray, pixel_threshold=1280*1280)
 
-    # 2- detect circle radius + centroid
-    dish_regions = detect_area_by_canny(img_gray, radius=(req.dish_diameter/2.0))
-    if(len(dish_regions) == 0):
+    # 1b- Canny edge detector
+    edges = canny(img_resize, sigma=3, low_threshold=10, high_threshold=50)
+
+    # 1c- Find the most prominent circle
+    radius = (req.dish_diameter/2.0)*scale
+    low = radius - radius*0.1
+    high = radius + radius*0.1
+    hough_radii = np.arange(int(low), int(high), 2)
+    hough_res = hough_circle(edges, hough_radii)
+
+    accums, cx, cy, radii = hough_circle_peaks(hough_res, hough_radii, total_num_peaks=1)
+
+    if(len(radii) == 0):
         print('No circle detected, check the requested dish diameter');
         return response
 
-    region_prop = dish_regions[0]
-    centroid = region_prop["centroid"]
-    radius = region_prop["equivalent_diameter_area"]/2.0
+    # 1d- Scale centroid and radius back to original image
+    centroid = (cy[0]/scale, cx[0]/scale)
+    radius = radii[0]/scale
+    radius -= req.dish_offset   # apply offset
 
-    centroid = tuple(c for c in centroid)
-    radius -= req.dish_offset
-
-    # 3- create circular masks
+    # 1e- Create circular masks
     circular_mask = create_circlular_mask(img_gray.shape[::-1], centroid[::-1], radius)
-    circular_mask_artifacts = create_circlular_mask(img_gray.shape[::-1], centroid[::-1], radius -8)
+    circular_mask_threshold = create_circlular_mask(img_gray.shape[::-1], centroid[::-1], radius -8)
 
-    # 4- mask orighinal image
+    # 1f- Mask original image
     idx = (circular_mask== False)
     img_masked = np.copy(img)
     img_masked[idx] = 0; # black
 
+    # 1g- Crop image
     x_min = int(centroid[0]-radius)
     x_max = int(centroid[0]+radius)
     y_min = int(centroid[1]-radius)
@@ -76,11 +85,9 @@ def callback_compute_morphology(req):
     if(y_max > img_masked.shape[1]):
         y_max = img_masked.shape[1]
 
-
-    # 5- crop image
     img_cropped = img_masked[x_min:x_max, y_min:y_max]
     img_original_cropped = img[x_min:x_max, y_min:y_max]
-    circular_mask_artifacts = circular_mask_artifacts[x_min:x_max, y_min:y_max]
+    circular_mask_threshold = circular_mask_threshold[x_min:x_max, y_min:y_max]
 
     # Convert to grayscale
     img_gray = cv.cvtColor(img_cropped, cv.COLOR_RGB2GRAY)
