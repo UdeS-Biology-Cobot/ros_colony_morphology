@@ -169,7 +169,11 @@ def callback_compute_morphology(req):
 
     # 9e- Compute axes_closness
     for p in properties:
-        p.axes_closness = compute_axes_closness(p.axis_major_length, p.axis_minor_length)
+        # avoid division by zero
+        if p.axis_major_length == 0.0 or p.axis_minor_length == 0:
+            p.axes_closness = 0.0
+        else:
+            p.axes_closness = compute_axes_closness(p.axis_major_length, p.axis_minor_length)
 
     # 9f- Find the nearest neighbors with ckDTree
     print('Computing distance to nearest neighboring cells...')
