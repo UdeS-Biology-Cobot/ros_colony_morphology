@@ -28,6 +28,8 @@ bridge = CvBridge()
 
 def callback_compute_morphology(req):
 
+    response = GetColonyMorphologyResponse()
+
     img = bridge.imgmsg_to_cv2(req.image, desired_encoding='passthrough')
 
     # Convert to grayscale
@@ -293,8 +295,6 @@ def callback_compute_morphology(req):
     reverse_metrics = sorted(quality_metrics, key=lambda x: x[0], reverse=True)
 
 
-    # Fill Response
-    response = GetColonyMorphologyResponse()
 
     # reduce list to requested number of cells
     reverse_metrics_slice = reverse_metrics
