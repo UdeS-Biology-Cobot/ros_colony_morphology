@@ -17,4 +17,6 @@
 	<exec_depend>python3-scipy</exec_depend>
 	<exec_depend>python3-shapely</exec_depend>
 	<exec_depend>python3-skimage</exec_depend>
+    <exec_depend>python3-pandas</exec_depend>
+    <exec_depend>python3-openpyxl</exec_depend>
 </package>

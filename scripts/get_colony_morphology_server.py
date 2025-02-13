@@ -3,6 +3,7 @@ from ros_colony_morphology.msg import ColonyMetrics
 from ros_colony_morphology.srv import GetColonyMorphology, GetColonyMorphologyResponse
 import rospy
 
+from colony_morphology.plotting import plot_bboxes, plot_region_roperties
 from colony_morphology.geometry import *
 from colony_morphology.image_transform import *
 # from colony_morphology.plotting import plot_bboxes, plot_region_roperties
@@ -14,6 +15,7 @@ from colony_morphology.skimage_util import cell_quality as cell_quality_cb
 from colony_morphology.skimage_util import axes_closness as axes_closness_cb
 from colony_morphology.skimage_util import discarded as discarded_cb
 from colony_morphology.skimage_util import discarded_description as discarded_description_cb
+from colony_morphology.skimage_util import regionprops_to_dict
 from colony_morphology.metric import axes_closness as compute_axes_closness
 
 from scipy import ndimage as ndi
@@ -24,11 +26,21 @@ from scipy.spatial import cKDTree
 
 import statistics
 from cv_bridge import CvBridge
+from matplotlib import pyplot as plt
+from skimage.draw import circle_perimeter
+from skimage.util import img_as_ubyte
+from skimage import data, color
+import time
 
+import pandas as pd
 
 bridge = CvBridge()
 
 def callback_compute_morphology(req):
+
+    print("===")
+    print("Received request")
+    print("===")
 
     response = GetColonyMorphologyResponse()
 
@@ -57,6 +69,23 @@ def callback_compute_morphology(req):
     if(len(radii) == 0):
         print('No circle detected, check the requested dish diameter');
         return response
+
+    # Save circle detection picture
+    if req.save_circle_detection:
+        fig, ax = plt.subplots(ncols=1, nrows=1)
+        img_circle_detection = img.copy()
+        for center_y, center_x, radius in zip(cy, cx, radii):
+            circy, circx = circle_perimeter(int(center_y/scale),
+                                            int(center_x/scale),
+                                            int(radius/scale),
+                                            shape=img_circle_detection.shape)
+            # Draw green perimeter
+            img_circle_detection[circy, circx] = (0, 255, 51)
+
+        ax.imshow(img_circle_detection)
+
+        plt.tight_layout()
+        plt.savefig(f'{req.save_path}/circle_detection.png')
 
     # 1d- Scale centroid and radius back to original image
     centroid = (cy[0]/scale, cx[0]/scale)
@@ -97,39 +126,32 @@ def callback_compute_morphology(req):
     # 3- Blur image
     img_blur = cv.GaussianBlur(img_gray, (7, 7), 0)
 
-
-
     # 4- Adaptive threshold
-    img_bw = cv.adaptiveThreshold(img_blur, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 9, 2)
+    img_threshold = cv.adaptiveThreshold(img_blur, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY_INV, 9, 2)
 
     # 5- Remove contour artifacts generated from adaptive threshold
+    img_mask_artifacts = img_threshold.copy()
     idx = (circular_mask_threshold== False)
-    img_bw[idx] = 0; # black
-
+    img_mask_artifacts[idx] = 0; # black
 
 
     # 6- Closing - dilation followed by erosion
     # https://docs.opencv.org/4.x/d9/d61/tutorial_py_morphological_ops.html
     kernel = np.ones((2,2),np.uint8)
-    closing = cv.morphologyEx(img_bw, cv.MORPH_CLOSE,kernel, iterations = 1)
-
+    closing = cv.morphologyEx(img_mask_artifacts, cv.MORPH_CLOSE,kernel, iterations = 1)
 
     # 7- Opening - erosion followed by dilation
     # https://docs.opencv.org/4.x/d9/d61/tutorial_py_morphological_ops.html
     kernel = np.ones((2,2),np.uint8)
     opening = cv.morphologyEx(closing, cv.MORPH_OPEN,kernel, iterations = 1)
 
-
     # Segmentation for separating different objects in an image
     # 8a- Generate the markers as local maxima of the distance to the background
     img_distance = np.empty(opening.shape)
     ndi.distance_transform_edt(opening, distances=img_distance)
 
-
-
     # Segment image using watershed technique
     print('Computing watershed...')
-
     coords = peak_local_max(img_distance, footprint=np.ones((3, 3)), labels=opening)
     img_peak_mask = np.zeros(img_distance.shape, dtype=bool)
     img_peak_mask[tuple(coords.T)] = True
@@ -138,7 +160,6 @@ def callback_compute_morphology(req):
 
     # 8b- Watershed
     img_labels = watershed(img_distance, markers, mask=opening, connectivity=1, compactness=0)
-
 
     # Generate metrics from labels
     # 9a- Add extra properties, some function must be populated afterwards
@@ -212,14 +233,6 @@ def callback_compute_morphology(req):
                 if(collision_distance < prev_collision_distance):
                     prev_collision_distance = collision_distance
                     p.nn_collision_distance = collision_distance
-
-                    # print(f"centroid = {dd[index]}")
-                    # print(f"radius = {radius}")
-                    # print(f"nnradius = {nn_radius}")
-                    # print(f"collision_distance = {collision_distance}")
-
-
-
 
     # 9g- Compute cell_quality metric an discard cell's based on user threshold
     max_nn_collision_distance = max(p["nn_collision_distance"] for p in properties if p["compactness"] >= 0.2 and p["nn_collision_distance"] >= 0)
@@ -309,14 +322,16 @@ def callback_compute_morphology(req):
             if (p.area < area_mean - req.std_weight_area* area_std):
                 p.discarded = True
                 p.discarded_description += f'Cell #{p.label} area is outside the requested std distribution: {p.area} < {area_mean - req.std_weight_area* area_std},\nwhere area = {p.area}, mean = {area_mean}, sigma = {req.std_weight_area}, std = {area_std}\n'
-                print(f'label {p.label} discarded due to being below std')
+                # print(f'label {p.label} discarded due to being below std')
                 p.cell_quality = 0.0
                 quality_metrics[i] = (p.cell_quality, i)
             elif(p.area > area_mean + req.std_weight_area* area_std):
                 p.discarded = True
                 p.discarded_description += f'Cell #{p.label} area is outside the requested std distribution: {p.area} > {area_mean + req.std_weight_area* area_std},\nwhere area = {p.area}, mean = {area_mean}, sigma = {req.std_weight_area}, std = {area_std}\n'
+                # print(f'label {p.label} discarded due to being below std')
                 p.cell_quality = 0.0
                 quality_metrics[i] = (p.cell_quality, i)
+
 
 
     # 10- sort by best cell_quality metrics (higher is better)
@@ -324,13 +339,10 @@ def callback_compute_morphology(req):
     # https://stackoverflow.com/a/10695158
     reverse_metrics = sorted(quality_metrics, key=lambda x: x[0], reverse=True)
 
-
-
     # 11- Reduce list to requested number of cells
     reverse_metrics_slice = reverse_metrics
     if(req.max_cells and len(reverse_metrics) > req.max_cells):
         reverse_metrics_slice = reverse_metrics[0:req.max_cells]
-
 
     # 12- Fill Response
     for metric in reverse_metrics_slice:
@@ -347,13 +359,184 @@ def callback_compute_morphology(req):
         metric_msg.diameter = p["equivalent_diameter_area"]
         metric_msg.nn_centroid_distance = p["nn_centroid_distance"]
         metric_msg.nn_collision_distance = p["nn_collision_distance"]
+        metric_msg.discarded = p["discarded"]
+        metric_msg.discarded_description = p["discarded_description"]
 
         response.cell_metrics.append(metric_msg)
 
     if req.send_image_result:
         response.image_result = bridge.cv2_to_imgmsg(img_original_cropped, encoding="passthrough")
 
+    # Save cell annotation
+    ax_annotation = None
+    if req.save_cell_annotation:
+        if len(response.cell_metrics) != 0:
+            fig, ax = plt.subplots()
 
+            if(len(response.image_result.data) == 0):
+                ax.imshow(cv_img)
+            else:
+                result_img = bridge.imgmsg_to_cv2(response.image_result, desired_encoding='passthrough')
+                ax.imshow(result_img)
+
+            ax.set_title(f'Best colonies to pick')
+
+            # circle up best matches
+            index  = 1
+            for metric in response.cell_metrics:
+
+                point = (0,0)
+                if(len(response.image_result.data) == 0):
+                    point = (metric.centroid_global[1], metric.centroid_global[0])
+                else:
+                    point = (metric.centroid_local[1], metric.centroid_local[0])
+
+                radius = metric.diameter/2.0
+                circle = plt.Circle(point, radius=radius, fc='none', color='red')
+                ax.add_patch(circle)
+                ax.annotate(index, xy=(point[0]+radius, point[1]-radius), color='red')
+                index += 1
+
+            plt.tight_layout()
+            plt.savefig(f'{req.save_path}/cell_annotation.png')
+
+    # Save segementation process
+    if req.save_segmentation_process:
+        layout = [
+            ["A", "B", "C",],
+            ["D", "E", "F",],
+            ["G", "H", "I",],
+        ]
+
+        fig, axd = plt.subplot_mosaic(layout, constrained_layout=True, dpi=300)
+
+
+        axd['A'].imshow(img_original_cropped)
+        axd['A'].set_title('Crop')
+        axd['A'].set_axis_off()
+
+        axd['B'].imshow(img_gray, cmap=plt.cm.gray)
+        axd['B'].set_title('Mask')
+        axd['B'].set_axis_off()
+
+        axd['C'].imshow(img_threshold, cmap=plt.cm.gray)
+        axd['C'].set_title('Threshold')
+        axd['C'].set_axis_off()
+
+        axd['D'].imshow(img_mask_artifacts, cmap=plt.cm.gray)
+        axd['D'].set_title('Filter')
+        axd['D'].set_axis_off()
+
+        axd['E'].imshow(closing, cmap=plt.cm.gray)
+        axd['E'].set_title('Closing')
+        axd['E'].set_axis_off()
+
+        axd['F'].imshow(opening, cmap=plt.cm.gray)
+        axd['F'].set_title('Opening')
+        axd['F'].set_axis_off()
+
+        axd['G'].imshow(img_distance, cmap=plt.cm.gray)
+        axd['G'].set_title('Distance')
+        axd['G'].set_axis_off()
+
+        axd['H'].imshow(img_labels, cmap=plt.cm.nipy_spectral)
+        axd['H'].set_title('Watershed')
+        axd['H'].set_axis_off()
+
+        if ax_annotation:
+            print("OK")
+            axd['I'] = ax_annotation
+            axd['I'].set_title('Best Cell\'s')
+            axd['I'].set_axis_off()
+
+        plt.tight_layout()
+        plt.savefig(f"{req.save_path}/segmentation.pdf")
+        plt.savefig(f"{req.save_path}/segmentation.png")
+
+    # Generate excel properties sheet
+    if req.save_properties:
+        # select properties included in the table
+        prop_names = ('label',
+                      'cell_quality',    # custom
+                      'compactness',     # custom
+                      'nn_centroid_distance', # custom
+                      'nn_collision_distance', # custom
+                      'discarded', # custom
+                      'discarded_description', # custom
+                      'axes_closness',   # custom
+                      'area',
+                      'area_bbox',
+                      'area_convex',
+                      'area_filled',
+                      'axis_major_length',
+                      'axis_minor_length',
+                      'bbox',
+                      'centroid',
+                      'centroid_local',
+                      'centroid_weighted',
+                      'centroid_weighted_local',
+                      'coords',
+                      'coords_scaled',
+                      'eccentricity',
+                      'equivalent_diameter_area',
+                      'euler_number',
+                      'extent',
+                      'feret_diameter_max',
+                      'image',
+                      'image_convex',
+                      'image_filled',
+                      'image_intensity',
+                      'inertia_tensor',
+                      'inertia_tensor_eigvals',
+                      'intensity_max',
+                      'intensity_mean',
+                      'intensity_min',
+                      # 'intensity_std', # requires scikit-image 0.24.0
+                      'label',
+                      'moments',
+                      'moments_central',
+                      'moments_hu',
+                      'moments_normalized',
+                      'moments_weighted',
+                      'moments_weighted_central',
+                      'moments_weighted_hu',
+                      'moments_weighted_normalized',
+                      'num_pixels',
+                      'orientation',
+                      'perimeter',
+                      'perimeter_crofton',
+                      'slice',
+                      'solidity',)
+
+        props_dict = regionprops_to_dict(properties, prop_names)
+
+        print(props_dict)
+
+
+        df = pd.DataFrame(props_dict)
+        df.to_excel(f'{req.save_path}/region_properties.xlsx', index=False)
+
+
+    # Plot interactive region properties
+    if req.plot_interactive_properties:
+        property_names = ['area',
+                          'eccentricity',
+                          'perimeter',
+                          'solidity',
+                          'compactness',
+                          'axes_closness',
+                          'nn_collision_distance',
+                          'cell_quality',
+                          'discarded',
+                          'discarded_description']
+
+        print(f"Generating region properties ({len(properties)}) interactively plot, this may take some time...")
+        plot_region_roperties(img_original_cropped, img_labels, properties, property_names)
+
+
+    print("===")
+    print("Sending response")
+    print("===")
     return response
 
 def get_colony_morphology_server():
