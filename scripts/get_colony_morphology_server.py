@@ -71,6 +71,23 @@ def callback_compute_morphology(req):
 
     # Save circle detection picture
     if req.save_circle_detection:
+        # wrt. resized image
+        fig, ax = plt.subplots(ncols=1, nrows=1)
+        dummy, img_circle_detection = resize_image(img, pixel_threshold=480*480)
+        for center_y, center_x, radius in zip(cy, cx, radii):
+            circy, circx = circle_perimeter(int(center_y),
+                                            int(center_x),
+                                            int(radius),
+                                            shape=img_circle_detection.shape)
+            # Draw green perimeter
+            img_circle_detection[circy, circx] = (0, 255, 51)
+
+        ax.imshow(img_circle_detection)
+
+        plt.tight_layout()
+        plt.savefig(f'{req.save_path}/circle_detection_resize.png')
+
+        # wrt. original image
         fig, ax = plt.subplots(ncols=1, nrows=1)
         img_circle_detection = img.copy()
         for center_y, center_x, radius in zip(cy, cx, radii):
@@ -84,7 +101,7 @@ def callback_compute_morphology(req):
         ax.imshow(img_circle_detection)
 
         plt.tight_layout()
-        plt.savefig(f'{req.save_path}/circle_detection.png')
+        plt.savefig(f'{req.save_path}/circle_detection_original.png')
 
     # 1d- Scale centroid and radius back to original image
     centroid = (cy[0]/scale, cx[0]/scale)
