@@ -300,7 +300,7 @@ def callback_compute_morphology(req):
             cell_quality = 0.0
         if(req.cell_max_diameter and p.equivalent_diameter > req.cell_max_diameter):
             p.discarded = True
-            p.discarded_description += f'Cell equivalent diameter is higher then the requested threshold: {p.equivalent_diameter:.2f} < {req.cell_max_diameter:.2f}\n'
+            p.discarded_description += f'Cell equivalent diameter is higher then the requested threshold: {p.equivalent_diameter:.2f} > {req.cell_max_diameter:.2f}\n'
             cell_quality = 0.0
         if(req.cell_min_compactness and p.compactness < req.cell_min_compactness):
             p.discarded = True
@@ -312,7 +312,7 @@ def callback_compute_morphology(req):
             cell_quality = 0.0
         if(req.cell_max_eccentricity and p.eccentricity > req.cell_max_eccentricity):
             p.discarded = True
-            p.discarded_description += f'Cell eccentricity is higher then the requested threshold: {p.eccentricity:.2f} < {req.cell_max_eccentricity:.2f}\n'
+            p.discarded_description += f'Cell eccentricity is higher then the requested threshold: {p.eccentricity:.2f} > {req.cell_max_eccentricity:.2f}\n'
             cell_quality = 0.0
         if(p.nn_collision_distance < 0): # in collision
             p.discarded = True
