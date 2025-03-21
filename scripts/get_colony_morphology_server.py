@@ -98,6 +98,13 @@ def callback_compute_morphology(req):
             # Draw green perimeter
             img_circle_detection[circy, circx] = (0, 255, 51)
 
+            # Add tickness to perimiter
+            for i in range(1, 4):
+                img_circle_detection[circy-i, circx] = (0, 255, 51)
+                img_circle_detection[circy+i, circx] = (0, 255, 51)
+                img_circle_detection[circy, circx-i] = (0, 255, 51)
+                img_circle_detection[circy, circx+i] = (0, 255, 51)
+
         ax.imshow(img_circle_detection)
 
         plt.tight_layout()
