@@ -51,8 +51,8 @@ def callback_compute_morphology(req):
 
     # Mask image to contain only the petri dish
     # 1a- Resize image to speedup circle detection
-    scale, img_resize = resize_image(img_gray, pixel_threshold=480*480)
-
+    pixel_threshold = 1920 * 1080
+    scale, img_resize = resize_image(img_gray, pixel_threshold=pixel_threshold)
     # 1b- Canny edge detector
     edges = canny(img_resize, sigma=3, low_threshold=10, high_threshold=50)
 
@@ -72,8 +72,7 @@ def callback_compute_morphology(req):
     # Save circle detection picture
     if req.save_circle_detection:
         # wrt. resized image
-        fig, ax = plt.subplots(ncols=1, nrows=1)
-        dummy, img_circle_detection = resize_image(img, pixel_threshold=480*480)
+        dummy, img_circle_detection = resize_image(img, pixel_threshold=pixel_threshold)
         for center_y, center_x, radius in zip(cy, cx, radii):
             circy, circx = circle_perimeter(int(center_y),
                                             int(center_x),
@@ -82,14 +81,11 @@ def callback_compute_morphology(req):
             # Draw green perimeter
             img_circle_detection[circy, circx] = (0, 255, 51)
 
-        ax.imshow(img_circle_detection)
-
-        plt.tight_layout()
-        plt.savefig(f'{req.save_path}/circle_detection_resize.png')
+        imsave(f'{req.save_path}/circle_detection_scaled.png', img_circle_detection)
 
         # wrt. original image
-        fig, ax = plt.subplots(ncols=1, nrows=1)
         img_circle_detection = img.copy()
+        print(img_circle_detection.shape)
         for center_y, center_x, radius in zip(cy, cx, radii):
             circy, circx = circle_perimeter(int(center_y/scale),
                                             int(center_x/scale),
@@ -105,10 +101,7 @@ def callback_compute_morphology(req):
                 img_circle_detection[circy, circx-i] = (0, 255, 51)
                 img_circle_detection[circy, circx+i] = (0, 255, 51)
 
-        ax.imshow(img_circle_detection)
-
-        plt.tight_layout()
-        plt.savefig(f'{req.save_path}/circle_detection_original.png')
+        imsave(f'{req.save_path}/circle_detection_original.png', img_circle_detection)
 
     # 1d- Scale centroid and radius back to original image
     centroid = (cy[0]/scale, cx[0]/scale)
