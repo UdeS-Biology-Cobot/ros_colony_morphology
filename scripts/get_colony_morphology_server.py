@@ -115,67 +115,126 @@ def callback_compute_morphology(req):
     img_gray = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
 
     # Mask image to contain only the petri dish
-    # 1a- Resize image to speedup circle detection
-    pixel_threshold = 1920 * 1080
-    scale, img_resize = resize_image(img_gray, pixel_threshold=pixel_threshold)
-    # 1b- Canny edge detector
-    edges = canny(img_resize, sigma=3, low_threshold=10, high_threshold=50)
+    # 1a- Rescale the image to reduce memory usage
+    scale = 0.25  # Reduce image size by 75%
+    rescaled_gray = rescale(img_gray, scale=scale, anti_aliasing=True)
 
-    # 1c- Find the most prominent circle
-    radius = (req.dish_diameter/2.0)*scale
-    low = radius - radius*0.1
-    high = radius + radius*0.1
-    hough_radii = np.arange(int(low), int(high), 2)
-    hough_res = hough_circle(edges, hough_radii)
+    # 1b- Apply Canny edge detection on the rescaled image
+    edges_rescaled = canny(rescaled_gray, sigma=2)
 
-    accums, cx, cy, radii = hough_circle_peaks(hough_res, hough_radii, total_num_peaks=1)
+    # 1c- Define possible circle radii for outermost circle
+    radius = (req.dish_diameter / 2.0)* scale
+    low = (radius - radius * 0.04)
+    high = (radius + radius * 0.04)
+    hough_radii_rescaled_large = np.arange(low, high, 2)  # Increased range for larger circles
+    hough_res_rescaled_large = hough_circle(edges_rescaled, hough_radii_rescaled_large)
 
-    if(len(radii) == 0):
-        print('No circle detected, check the requested dish diameter');
-        return response
+    # 1d- Extract the most prominent circles
+    accums_large, cx_large, cy_large, radii_large = hough_circle_peaks(
+        hough_res_rescaled_large, hough_radii_rescaled_large, total_num_peaks=5
+    )
+
+    # 1e- Select the largest circle by radius
+    largest_circle_idx = np.argmax(radii_large)
+    cx_final, cy_final, radius_final = (
+        cx_large[largest_circle_idx],
+        cy_large[largest_circle_idx],
+        radii_large[largest_circle_idx],
+    )
+
+    # 1f- Scale circle properties back to original size
+    cx_corrected = cx_final / scale
+    cy_corrected = cy_final / scale
+    radius_corrected = radius_final / scale
+
+
+    # 1g- Generate 8 Equidistant Points Around Perimeter
+    theta_vals = np.linspace(0, 2 * np.pi, 9)[:-1]  # 8 points at 45-degree intervals
+    perimeter_points = np.array([
+        [cx_corrected + radius_corrected * np.cos(theta),
+         cy_corrected + radius_corrected * np.sin(theta)]
+        for theta in theta_vals
+    ])
+
+    # 1h- find brightest point along center point
+    center_point = (cx_corrected, cy_corrected)
+    adjusted_points = find_brightest_with_dark_neighbor(img_gray, perimeter_points, center_point, threshold=50, search_distance=5)
+    if(len(adjusted_points) != len(perimeter_points)):
+        adjusted_points = find_brightest_with_dark_neighbor(img_gray, perimeter_points, center_point, threshold=50, search_distance=30)
+
+    adjusted_points_np = np.array(adjusted_points)
+
+    # 1i- find adjusted centroid + radius
+    initial_guess = [cx_corrected, cy_corrected, radius_corrected]
+    new_params, _ = leastsq(circle_residuals, initial_guess, args=(adjusted_points_np,))
+    cx_adjusted, cy_adjusted, radius_adjusted = new_params
+
 
     # Save circle detection picture
     if req.save_circle_detection:
-        # wrt. resized image
-        dummy, img_circle_detection = resize_image(img, pixel_threshold=pixel_threshold)
-        for center_y, center_x, radius in zip(cy, cx, radii):
-            circy, circx = circle_perimeter(int(center_y),
-                                            int(center_x),
-                                            int(radius),
-                                            shape=img_circle_detection.shape)
-            # Draw green perimeter
-            img_circle_detection[circy, circx] = (0, 255, 51)
+        # # wrt. resized image
+        # dummy, img_circle_detection = resize_image(img, pixel_threshold=pixel_threshold)
+        img_circle_detection = rescale(img, scale=scale, anti_aliasing=True, channel_axis=-1)
+        print(img.shape)
+        # print(img_circle_detection.shape)
+        img_circle_detection = np.copy(img_circle_detection)
 
-        imsave(f'{req.save_path}/circle_detection_scaled.png', img_circle_detection)
+
+
+        circy, circx = circle_perimeter(int(cy_final),
+                                        int(cx_final),
+                                        int(radius_final),
+                                        shape=img_circle_detection.shape)
+        # Draw green perimeter
+        img_circle_detection[circy, circx] = (0, 255, 51)
+        img_circle_detection = np.clip(img_circle_detection, 0, 1)
+
+        rescaled_image_with_circle_uint8 = img_as_ubyte(img_circle_detection)
+
+
+        imsave(f'{req.save_path}/circle_detection_scaled.png', rescaled_image_with_circle_uint8)
 
         # wrt. original image
         img_circle_detection = img.copy()
-        print(img_circle_detection.shape)
-        for center_y, center_x, radius in zip(cy, cx, radii):
-            circy, circx = circle_perimeter(int(center_y/scale),
-                                            int(center_x/scale),
-                                            int(radius/scale),
-                                            shape=img_circle_detection.shape)
-            # Draw green perimeter
-            img_circle_detection[circy, circx] = (0, 255, 51)
+        # Draw red perimiter (after rescaling to normal)
+        circy, circx = circle_perimeter(int(cy_corrected),
+                                        int(cx_corrected),
+                                        int(radius_corrected),
+                                        shape=img_circle_detection.shape)
 
-            # Add tickness to perimiter
-            for i in range(1, 4):
-                img_circle_detection[circy-i, circx] = (0, 255, 51)
-                img_circle_detection[circy+i, circx] = (0, 255, 51)
-                img_circle_detection[circy, circx-i] = (0, 255, 51)
-                img_circle_detection[circy, circx+i] = (0, 255, 51)
+        img_circle_detection[circy, circx] = (255, 0, 0)
+
+        # Draw green perimeter ()
+        circy, circx = circle_perimeter(int(cy_adjusted),
+                                        int(cx_adjusted),
+                                        int(radius_adjusted),
+                                        shape=img_circle_detection.shape)
+
+        img_circle_detection[circy, circx] = (0, 255, 51)
+
+        # Add tickness to perimiter
+        # for i in range(1, 4):
+        #     img_circle_detection[circy-i, circx] = (0, 255, 51)
+        #     img_circle_detection[circy+i, circx] = (0, 255, 51)
+        #     img_circle_detection[circy, circx-i] = (0, 255, 51)
+        #     img_circle_detection[circy, circx+i] = (0, 255, 51)
+
+
+        # Draw adjusted points
+        for point in adjusted_points_np:
+            img_circle_detection[int(point[1]), int(point[0])] = (0, 0, 255)
 
         imsave(f'{req.save_path}/circle_detection_original.png', img_circle_detection)
 
     # 1d- Scale centroid and radius back to original image
-    centroid = (cy[0]/scale, cx[0]/scale)
-    radius = radii[0]/scale
-    radius -= req.dish_offset   # apply offset
+    centroid = (cy_adjusted, cx_adjusted)
+    radius = radius_adjusted
+    radius_offset = radius - req.dish_offset   # apply offset
+
 
     # 1e- Create circular masks
-    circular_mask = create_circlular_mask(img_gray.shape[::-1], centroid[::-1], radius)
-    circular_mask_threshold = create_circlular_mask(img_gray.shape[::-1], centroid[::-1], radius -8)
+    circular_mask = create_circlular_mask(img_gray.shape[::-1], centroid[::-1], radius_offset)
+    circular_mask_threshold = create_circlular_mask(img_gray.shape[::-1], centroid[::-1], radius_offset -8)
 
     # 1f- Mask original image
     idx = (circular_mask== False)
@@ -183,10 +242,10 @@ def callback_compute_morphology(req):
     img_masked[idx] = 0; # black
 
     # 1g- Crop image
-    x_min = int(centroid[0]-radius)
-    x_max = int(centroid[0]+radius)
-    y_min = int(centroid[1]-radius)
-    y_max = int(centroid[1]+radius)
+    x_min = int(centroid[0]-radius_offset)
+    x_max = int(centroid[0]+radius_offset)
+    y_min = int(centroid[1]-radius_offset)
+    y_max = int(centroid[1]+radius_offset)
 
     if(x_min < 0):
         x_min = 0
