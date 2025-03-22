@@ -19,15 +19,19 @@ from colony_morphology.skimage_util import regionprops_to_dict
 from colony_morphology.metric import axes_closness as compute_axes_closness
 
 from scipy import ndimage as ndi
+from scipy.optimize import leastsq
+
 from skimage.feature import peak_local_max
 from skimage.segmentation import watershed
 from skimage.measure import regionprops, label
+from skimage.transform import hough_circle, hough_circle_peaks, rescale
+from skimage.io import imsave
 from scipy.spatial import cKDTree
 
 import statistics
 from cv_bridge import CvBridge
 from matplotlib import pyplot as plt
-from skimage.draw import circle_perimeter
+from skimage.draw import circle_perimeter, circle_perimeter_aa, line
 from skimage.util import img_as_ubyte
 from skimage import data, color
 import time
@@ -35,6 +39,67 @@ import time
 import pandas as pd
 
 bridge = CvBridge()
+
+
+def find_brightest_with_dark_neighbor(image, points, center, threshold=200, search_distance=20):
+    """
+    Find the brightest pixel along the line from each perimeter point to the center and in the opposite direction.
+
+    Args:
+        image (ndarray): Grayscale image.
+        points (ndarray): Array of (x, y) coordinates of perimeter points.
+        center (tuple): (x, y) coordinates of the center point.
+        threshold (int, optional): Brightness threshold to identify bright pixels. Default is 200.
+        search_distance (int, optional): Maximum distance to search along the line.
+
+    Returns:
+        list: List of tuples (x, y) of valid bright pixels.
+    """
+    bright_points = []  # Store valid bright pixels
+
+    for x, y in points:
+        # Get the line between the perimeter point and the center
+        rr_to_center, cc_to_center = line(int(y), int(x), int(center[1]), int(center[0]))
+
+        # Calculate the opposite direction (away from center)
+        away_x = int(x + (x - center[0]))
+        away_y = int(y + (y - center[1]))
+        rr_away, cc_away = line(int(y), int(x), int(away_y), int(away_x))
+
+        found_points = []  # Store potential bright points
+        for rr, cc in [(rr_to_center, cc_to_center), (rr_away, cc_away)]:
+            # Limit the search to the specified distance
+            search_limit = min(len(rr), search_distance)
+
+            # Iterate through the line points up to search_distance
+            for i in range(search_limit):
+                ny, nx = rr[i], cc[i]
+
+                # Check if within valid bounds and meets the threshold
+                if 0 <= nx < image.shape[1] and 0 <= ny < image.shape[0] and image[ny, nx] >= threshold:
+                    found_points.append((nx, ny))
+                    break  # Stop searching after finding the first valid pixel
+
+        # Select the point furthest from the center if both directions found points
+        if len(found_points) == 2:
+            dist1 = np.sqrt((found_points[0][0] - center[0]) ** 2 + (found_points[0][1] - center[1]) ** 2)
+            dist2 = np.sqrt((found_points[1][0] - center[0]) ** 2 + (found_points[1][1] - center[1]) ** 2)
+
+            # Choose the one further away from the center
+            chosen_point = found_points[0] if dist1 > dist2 else found_points[1]
+            bright_points.append(chosen_point)
+
+        # If only one point is found, use it
+        elif len(found_points) == 1:
+            bright_points.append(found_points[0])
+
+    return bright_points
+
+### Fit Circle Through New Points
+def circle_residuals(params, points):
+    x0, y0, r = params
+    return np.sqrt((points[:, 0] - x0) ** 2 + (points[:, 1] - y0) ** 2) - r
+
 
 def callback_compute_morphology(req):
 
