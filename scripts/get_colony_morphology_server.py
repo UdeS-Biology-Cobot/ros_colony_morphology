@@ -589,6 +589,23 @@ def callback_compute_morphology(req):
         plt.savefig(f"{req.save_path}/segmentation.pdf")
         plt.savefig(f"{req.save_path}/segmentation.png")
 
+
+        # save as images
+        imsave(f'{req.save_path}/crop.png', img_original_cropped)
+        imsave(f'{req.save_path}/mask.png', img_gray)
+        imsave(f'{req.save_path}/threshold.png', img_threshold)
+        imsave(f'{req.save_path}/filter.png', img_mask_artifacts)
+        imsave(f'{req.save_path}/closing.png', closing)
+        imsave(f'{req.save_path}/opening.png', opening)
+
+        # Normalize and convert to uint8
+        dist_normalized = img_distance / np.max(img_distance)
+        dist_uint8 = img_as_ubyte(dist_normalized)
+        imsave(f'{req.save_path}/distance.png', dist_uint8)
+
+        plt.imsave(f'{req.save_path}/watershed.png', img_labels, cmap='nipy_spectral')
+
+
     # Generate excel properties sheet
     if req.save_properties:
         # select properties included in the table
