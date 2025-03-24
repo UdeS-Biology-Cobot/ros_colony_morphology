@@ -508,8 +508,11 @@ def callback_compute_morphology(req):
     if req.save_cell_annotation:
         if len(response.cell_metrics) != 0:
             result_img = bridge.imgmsg_to_cv2(response.image_result, desired_encoding='passthrough')
+
+            dpi_value = 100
             height, width = result_img.shape[:2]
-            fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
+
+            fig, ax = plt.subplots()
             ax.imshow(result_img)
             ax.axis('off')
 
@@ -526,8 +529,16 @@ def callback_compute_morphology(req):
                 ax.annotate(index, xy=(point[0]+radius, point[1]-radius), color='red')
                 index += 1
 
-            plt.tight_layout()
-            plt.savefig(f'{req.save_path}/annotated_cell.png')
+            # Set exact figure size to match original dimensions
+            fig.set_size_inches(width / dpi_value, height / dpi_value)
+
+            # Ensure there are no margins by setting tight layout and removing axis padding
+            plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+
+            # Set transparent background
+            fig.patch.set_alpha(0)
+
+            plt.savefig(f'{req.save_path}/annotated_cell.png', bbox_inches='tight', pad_inches=0, dpi=dpi_value, transparent=True)
 
     # Save segementation process
     if req.save_segmentation_process:
