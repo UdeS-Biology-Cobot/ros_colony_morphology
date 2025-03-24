@@ -507,25 +507,18 @@ def callback_compute_morphology(req):
     ax_annotation = None
     if req.save_cell_annotation:
         if len(response.cell_metrics) != 0:
-            fig, ax = plt.subplots()
-
-            if(len(response.image_result.data) == 0):
-                ax.imshow(cv_img)
-            else:
-                result_img = bridge.imgmsg_to_cv2(response.image_result, desired_encoding='passthrough')
-                ax.imshow(result_img)
-
-            ax.set_title(f'Best colonies to pick')
+            result_img = bridge.imgmsg_to_cv2(response.image_result, desired_encoding='passthrough')
+            height, width = result_img.shape[:2]
+            fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
+            ax.imshow(result_img)
+            ax.axis('off')
 
             # circle up best matches
             index  = 1
             for metric in response.cell_metrics:
 
                 point = (0,0)
-                if(len(response.image_result.data) == 0):
-                    point = (metric.centroid_global[1], metric.centroid_global[0])
-                else:
-                    point = (metric.centroid_local[1], metric.centroid_local[0])
+                point = (metric.centroid_local[1], metric.centroid_local[0])
 
                 radius = metric.diameter/2.0
                 circle = plt.Circle(point, radius=radius, fc='none', color='red')
@@ -534,7 +527,7 @@ def callback_compute_morphology(req):
                 index += 1
 
             plt.tight_layout()
-            plt.savefig(f'{req.save_path}/cell_annotation.png')
+            plt.savefig(f'{req.save_path}/annotated_cell.png')
 
     # Save segementation process
     if req.save_segmentation_process:
@@ -586,7 +579,6 @@ def callback_compute_morphology(req):
             axd['I'].set_axis_off()
 
         plt.tight_layout()
-        plt.savefig(f"{req.save_path}/segmentation.pdf")
         plt.savefig(f"{req.save_path}/segmentation.png")
 
 
