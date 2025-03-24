@@ -277,12 +277,12 @@ def callback_compute_morphology(req):
 
     # 6- Closing - dilation followed by erosion
     # https://docs.opencv.org/4.x/d9/d61/tutorial_py_morphological_ops.html
-    kernel = np.ones((2,2),np.uint8)
+    kernel = np.ones((1,1),np.uint8)
     closing = cv.morphologyEx(img_mask_artifacts, cv.MORPH_CLOSE,kernel, iterations = 1)
 
     # 7- Opening - erosion followed by dilation
     # https://docs.opencv.org/4.x/d9/d61/tutorial_py_morphological_ops.html
-    kernel = np.ones((2,2),np.uint8)
+    kernel = np.ones((1,1),np.uint8)
     opening = cv.morphologyEx(closing, cv.MORPH_OPEN,kernel, iterations = 1)
 
     # Segmentation for separating different objects in an image
