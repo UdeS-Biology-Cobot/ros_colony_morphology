@@ -507,7 +507,7 @@ def callback_compute_morphology(req):
     ax_annotation = None
     if req.save_cell_annotation:
         if len(response.cell_metrics) != 0:
-            result_img = bridge.imgmsg_to_cv2(response.image_result, desired_encoding='passthrough')
+            result_img = img_original_cropped.copy()
 
             dpi_value = 100
             height, width = result_img.shape[:2]
