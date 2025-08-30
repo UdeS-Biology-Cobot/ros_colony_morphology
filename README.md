@@ -1,5 +1,5 @@
 # ros_colony_morphology
-ROS wrapper around the [colony_morphology](https://github.com/captain-yoshi/colony-morphology) python library.
+ROS wrapper around the [colony_morphology](https://github.com/UdeS-Biology-Cobot/colony-morphology) python library.
 
 Creates the ROS Service on the `/get_colony_morphology` namespace and :
 - Given an image and some [parameters](./srv/GetColonyMorphology.srv#L1-L42)
@@ -10,7 +10,7 @@ Add colony_morphology into a virtual python environment instead of installing gl
 
 ``` sh
 # clone this package + submodule
-$ git clone --recurse-submodules https://github.com/captain-yoshi/ros_colony_morphology
+$ git clone --recurse-submodules https://github.com/UdeS-Biology-Cobot/ros_colony_morphology
 
 # install dependencies
 $ rosdep install --from-path src/ros_colony_morphology
