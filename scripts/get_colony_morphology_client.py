@@ -48,6 +48,7 @@ def make_request(img_msg: "sensor_msgs/Image", args: argparse.Namespace) -> GetC
     req.std_weight_diameter = args.std_weight_diameter
 
     # outputs (server/lib will save artifacts to this folder)
+    req.verbose = args.verbose
     req.send_image_result = args.send_image_result
     req.save_path = str(Path(args.save_path).expanduser().resolve())
     req.save_circle_detection   = args.save_circle_detection
@@ -130,6 +131,7 @@ def main():
     parser.add_argument("--std-weight-diameter", type=float, default=2.5)
 
     # Server-side artifact toggles
+    parser.add_argument("--verbose", action="store_true", default=True)
     parser.add_argument("--save-circle-detection", action="store_true", default=True)
     parser.add_argument("--save-segmentation-process", action="store_true", default=True)
     parser.add_argument("--save-cell-annotation", action="store_true", default=True)

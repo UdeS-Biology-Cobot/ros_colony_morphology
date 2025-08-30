@@ -47,6 +47,7 @@ float64 std_weight_diameter # 1 = Keep 68.27% of cell's between mu -1*sigma and 
 bool send_image_result
 
 # Debugging
+bool verbose                    # output log from colony_morphology library
 string save_path                # absolute path to save files to, e.g. "/home/user/mydirectory"
 bool save_circle_detection      # subplot of circle detection algorithm [png]
 bool save_segmentation_process  # subplot of all the segmentation (after circle detection) [png]
